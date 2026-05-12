@@ -1,5 +1,3 @@
-<img width="1544" height="809" alt="image" src="https://github.com/user-attachments/assets/7dae9f87-edee-4e56-9cf2-2da481a5ba46" /># OCR Lab — Kubernetes Multi-Engine OCR Platform
-
 A Kubernetes-based OCR solution that routes image OCR requests through a **FastAPI Gateway** to one of three pluggable OCR engines (**Tesseract**, **EasyOCR**, **PaddleOCR**), processes results through a **.NET API**, and archives them in **Alfresco**. Includes integrated observability with **Prometheus**, **Grafana**, **Loki**, and **Tempo**.
 
 ```
