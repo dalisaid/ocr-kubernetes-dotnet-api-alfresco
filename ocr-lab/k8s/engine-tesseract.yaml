@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engine-tesseract
+  namespace: ocr-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: engine-tesseract
+  template:
+    metadata:
+      labels:
+        app: engine-tesseract
+    spec:
+      containers:
+        - name: engine-tesseract
+          image: ocr-tesseract:latest   # ✅ FIXED
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8001       # ✅ KEEP
+
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8001
+            failureThreshold: 10
+            periodSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8001
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: engine-tesseract
+  namespace: ocr-lab
+spec:
+  selector:
+    app: engine-tesseract
+  ports:
+    - port: 8001
+      targetPort: 8001

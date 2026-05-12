@@ -1,0 +1,36 @@
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm repo update
+
+
+# namespace before everything
+kubectl create namespace ocr-lab
+
+# Prometheus
+helm install prometheus prometheus-community/prometheus `
+  -n ocr-lab -f monitoring/prometheus-values.yaml
+
+# Loki + Promtail
+helm install loki grafana/loki-stack `
+  -n ocr-lab
+
+# Tempo
+helm install tempo grafana/tempo `
+  -n ocr-lab
+
+# OpenTelemetry Collector
+helm install otel-collector open-telemetry/opentelemetry-collector `
+  -n ocr-lab -f otel-values.yaml
+
+# Grafana
+helm install grafana grafana/grafana `
+  -n ocr-lab -f monitoring/grafana-values.yaml
+
+
+# Apply dashboards
+kubectl apply -f monitoring/dashboard.yaml
+
+# Role Based Access Control
+
+kubectl apply -f monitoring/rbac.yaml

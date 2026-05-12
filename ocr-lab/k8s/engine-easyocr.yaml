@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engine-easyocr
+  namespace: ocr-lab
+  labels:
+    app: engine-easyocr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: engine-easyocr
+  template:
+    metadata:
+      labels:
+        app: engine-easyocr
+    spec:
+      containers:
+        - name: engine-easyocr
+          image: ocr-easyocr:latest   # ✅ match your docker build
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8002     # ⚠️ IMPORTANT (FastAPI default)
+
+          # ❌ REMOVED:
+          # - volumes
+          # - volumeMounts
+          # - MODEL_STORAGE_DIR
+
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8002
+            failureThreshold: 30
+            periodSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8002
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8002
+            initialDelaySeconds: 30
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "3Gi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: engine-easyocr
+  namespace: ocr-lab
+spec:
+  selector:
+    app: engine-easyocr
+  ports:
+    - port: 8002
+      targetPort: 8002

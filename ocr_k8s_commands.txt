@@ -1,0 +1,137 @@
+OCR LAB – Kubernetes & Docker Useful Commands
+==================================================
+
+# ---------------------------
+# 🚀 INITIAL SETUP
+# ---------------------------
+
+# Enable Kubernetes (Docker Desktop UI)
+# Then verify:
+kubectl get nodes
+
+# Go to project
+cd ocr-lab
+
+
+port forward grafana 
+
+kubectl port-forward svc/monitoring-grafana 3000:80 -n ocr-lab
+# ---------------------------
+# 🐳 BUILD IMAGES
+# ---------------------------
+
+docker build -t ocr-gateway:latest ./gateway
+docker build -t ocr-tesseract:latest ./engines/tesseract
+docker build -t ocr-easyocr:latest ./engines/easyocr
+docker build -t ocr-paddle:latest ./engines/paddle
+
+# ---------------------------
+# ☸️ DEPLOY TO KUBERNETES
+# ---------------------------
+
+cd k8s
+
+kubectl apply -f k8s/namespace.yaml 
+kubectl apply -f k8s/engine-tesseract.yaml -n ocr-lab
+kubectl apply -f k8s/engine-easyocr.yaml -n ocr-lab
+kubectl apply -f k8s/engine-paddle.yaml -n ocr-lab
+kubectl apply -f k8s/gateway.yaml -n ocr-lab
+
+cd monitoring
+
+kubectl apply -f monitoring/prometheus-config.yaml -n ocr-lab
+kubectl apply -f monitoring/prometheus-deployment.yaml -n ocr-lab
+kubectl apply -f monitoring/prometheus-service.yaml -n ocr-lab
+kubectl apply -f monitoring/loki-config.yaml -n ocr-lab
+kubectl apply -f monitoring/loki-deployment.yaml -n ocr-lab
+kubectl apply -f monitoring/loki-service.yaml -n ocr-lab
+kubectl apply -f monitoring/promtail-config.yaml -n ocr-lab
+kubectl apply -f monitoring/promtail-daemonset.yaml -n ocr-lab
+kubectl apply -f monitoring/promtail-rbac.yaml -n ocr-lab
+
+# OR deploy everything:
+kubectl apply -f .
+
+# ---------------------------
+# 🔍 CHECK STATUS
+# ---------------------------
+
+kubectl get pods -n ocr-lab
+kubectl get svc -n ocr-lab
+
+# Watch pods live:
+kubectl get pods -n ocr-lab -w
+
+# ---------------------------
+# 🌐 ACCESS API
+# ---------------------------
+
+# Open in browser:
+http://localhost:30800/docs
+
+# ---------------------------
+# 🛑 STOP / START
+# ---------------------------
+
+# Pause (like docker compose stop)
+kubectl scale deployment --all --replicas=0 -n ocr-lab
+kubectl scale deployment engine-tesseract --replicas=0 -n ocr-lab
+
+# Resume
+kubectl scale deployment --all --replicas=1 -n ocr-lab
+
+# Full delete (like docker compose down)
+kubectl delete namespace ocr-lab
+
+#Prometheus
+kubectl delete deployment prometheus -n ocr-lab   
+kubectl delete svc prometheus -n ocr-lab
+kubectl delete configmap prometheus-config -n ocr-lab
+# ---------------------------
+# 🔄 UPDATE CODE
+# ---------------------------
+
+# Rebuild image
+docker build -t ocr-gateway:latest ./gateway
+
+# Restart deployment
+kubectl rollout restart deployment gateway -n ocr-lab
+
+# Restart all deployments
+kubectl rollout restart deployment -n ocr-lab
+
+# ---------------------------
+# 📜 LOGS & DEBUG
+# ---------------------------
+
+# Logs
+kubectl logs <pod-name> -n ocr-lab
+
+# Describe pod (for errors)
+kubectl describe pod <pod-name> -n ocr-lab
+
+# Exec inside container
+kubectl exec -it <pod-name> -n ocr-lab -- bash
+
+# ---------------------------
+# ❌ COMMON ISSUES
+# ---------------------------
+
+# ImagePullBackOff → image not built locally
+# Fix: rebuild image
+
+# CrashLoopBackOff → app crash
+# Fix: check logs
+
+# Connection refused → wrong port
+# Fix: check ports in Dockerfile + YAML + gateway
+
+# ---------------------------
+# 🧹 CLEANUP DOCKER
+# ---------------------------
+
+# Remove images
+docker rmi ocr-gateway ocr-tesseract ocr-easyocr ocr-paddle
+
+# List images
+docker images

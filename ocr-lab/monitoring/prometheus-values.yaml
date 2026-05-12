@@ -1,0 +1,70 @@
+server:
+  service:
+    type: NodePort
+    nodePort: 30090
+  retention: 7d
+  persistentVolume:
+    enabled: false
+  global:
+      scrape_interval: 15s
+extraScrapeConfigs: |
+
+  - job_name: 'ocr-gateway'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['gateway:8000']
+
+  - job_name: 'engine-tesseract'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['engine-tesseract:8001']
+
+  - job_name: 'engine-easyocr'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['engine-easyocr:8002']
+
+  - job_name: 'engine-paddle'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['engine-paddle:8003']
+
+  - job_name: 'dotnet-api'
+    static_configs:
+      - targets: ['host.docker.internal:5122']
+      
+  
+
+  - job_name: 'kubernetes-cadvisor'
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+
+  - job_name: 'kube-state-metrics'
+    static_configs:
+      - targets: ['prometheus-kube-state-metrics:8080']
+
+
+
+
+alertmanager:
+  enabled: false
+
+pushgateway:
+  enabled: false
+
+nodeExporter:
+  enabled: false

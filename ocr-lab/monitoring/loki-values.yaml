@@ -1,0 +1,6 @@
+# REMOVE this completely:
+# loki:
+#   grafana:
+#     sidecar:
+#       datasources:
+#         enabled: false
