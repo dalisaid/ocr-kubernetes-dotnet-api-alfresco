@@ -1,4 +1,4 @@
-# OCR Lab — Kubernetes Multi-Engine OCR Platform
+<img width="1544" height="809" alt="image" src="https://github.com/user-attachments/assets/7dae9f87-edee-4e56-9cf2-2da481a5ba46" /># OCR Lab — Kubernetes Multi-Engine OCR Platform
 
 A Kubernetes-based OCR solution that routes image OCR requests through a **FastAPI Gateway** to one of three pluggable OCR engines (**Tesseract**, **EasyOCR**, **PaddleOCR**), processes results through a **.NET API**, and archives them in **Alfresco**. Includes integrated observability with **Prometheus**, **Grafana**, **Loki**, and **Tempo**.
 
@@ -221,6 +221,11 @@ Login with **admin/admin** and navigate to the **"OCR Observability Platform"** 
 | kubernetes-cadvisor | kubernetes.default.svc:443 | — | container_cpu_usage, container_memory_working_set |
 | kube-state-metrics | prometheus-kube-state-metrics:8080 | 8080 | kube_pod_status_phase, kube_pod_container_status_restarts_total |
 
+#### Dashboard Snapshot
+
+<img width="1544" height="809" alt="image" src="https://github.com/user-attachments/assets/e9c9fd69-10e2-42e3-aa95-25dd3ee59d9f" />
+
+link: https://snapshots.raintank.io/dashboard/snapshot/soZzBk0cuAJSFxj1NDvUFMUX0tzBikvd
 
 
 ## Ports Reference
