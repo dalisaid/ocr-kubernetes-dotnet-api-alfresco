@@ -12,7 +12,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir fastapi uvicorn pytesseract pillow python-multipart
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    pytesseract \
+    pillow \
+    python-multipart \
+    aio-pika \
+    redis[asyncio] \
+    httpx \
+    prometheus-client \
+    opentelemetry-api \
+    opentelemetry-sdk \
+    opentelemetry-exporter-otlp \
+    opentelemetry-exporter-otlp-proto-grpc \
+    opentelemetry-instrumentation-fastapi
 
 COPY main.py .
 

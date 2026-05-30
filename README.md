@@ -1,39 +1,61 @@
 # OCR Lab — Kubernetes Multi-Engine OCR Platform
 
-A Kubernetes-based OCR solution that routes image OCR requests through a **FastAPI Gateway** to one of three pluggable OCR engines (**Tesseract**, **EasyOCR**, **PaddleOCR**), processes results through a **.NET API**, and archives them in **Alfresco**. Includes integrated observability with **Prometheus**, **Grafana**, **Loki**, and **Tempo**.
+A Kubernetes-based OCR solution featuring a **microservice architecture** with:
+- **FastAPI Gateway** receiving OCR requests and submitting jobs to RabbitMQ
+- **RabbitMQ** for asynchronous task queuing and distribution to worker engines
+- **OCR Engine Workers** (**Tesseract**, **EasyOCR**, **PaddleOCR**) consuming jobs from the queue
+- **Redis** for caching, session management, and distributed state
+- **.NET API** for processing OCR results and archival
+- **Alfresco** for content repository and file archival
+- **Integrated observability** with **Prometheus**, **Grafana**, **Loki**, and **Tempo**
 
 ```
-                    ┌──────────────────────────────────────────────────────────┐
-                    │              ocr-lab namespace (Kubernetes)               │
-                    │                                                           │
-  POST /ocr         │  ┌─────────┐    http   ┌──────────────────────────────┐  │
-  + image + engine  ├─►│ Gateway ├─────────►│  OCR Engines                  │  │
-                    │  │ :8000   │          │  ├─ Tesseract   (:8001)      │  │
-                    │  └────┬────┘          │  ├─ EasyOCR     (:8002)      │  │
-                    │       │               │  └─ PaddleOCR   (:8003)      │  │
-                    │       │               └──────────────────────────────┘  │
-                    │       │                                                  │
-                    └───────┼──────────────────────────────────────────────────┘
+                    ┌──────────────────────────────────────────────────────────────┐
+                    │              ocr-lab namespace (Kubernetes)                   │
+                    │                                                               │
+  POST /ocr         │  ┌─────────────┐                                              │
+  + image + engine  ├─►│  Gateway    │                                              │
+                    │  │  :8000      │                                              │
+                    │  └──────┬──────┘                                              │
+                    │         │ (Job Submission)                                    │
+                    │  ┌──────▼──────────────┐                                      │
+                    │  │    RabbitMQ        │ (Job Queue)                           │
+                    │  │    :5672           │                                       │
+                    │  └──────┬─────────────┘                                       │
+                    │         │ (Job Distribution)                                 │
+                    │         │                                                    │
+                    │  ┌──────▼────────────────────────────────────────┐            │
+                    │  │  OCR Engine Workers (Consumers)              │            │
+                    │  │  ├─ Tesseract   (:8001)                      │            │
+                    │  │  ├─ EasyOCR     (:8002)                      │            │
+                    │  │  └─ PaddleOCR   (:8003)                      │            │
+                    │  └──────────────────────────────────────────────┘            │
+                    │                                                               │
+                    │  ┌──────────────┐                                             │
+                    │  │    Redis     │ (Cache/State)                              │
+                    │  │    :6379     │                                             │
+                    │  └──────────────┘                                             │
+                    │                                                               │
+                    └───────────────────────────────────────────────────────────────┘
                             │
-                    ┌───────▼──────────────────────────────────┐
-                    │  .NET API (dotnet-api)                  │
-                    │  POST /ocrdata                          │
-                    │  (Receives OCR text + metadata)         │
-                    │                                         │
-                    │                                         │
-                    │  └─ Alfresco: File & metadata archive   │
-                    └───────┬──────────────────────────────────┘
+                    ┌───────▼─────────────────────────────────┐
+                    │  .NET API (dotnet-api)                 │
+                    │  POST /ocrdata                         │
+                    │  (Receives OCR text + metadata)        │
+                    │                                        │
+                    │  └─ Alfresco: File & metadata archive  │
+                    └───────┬─────────────────────────────────┘
                             │
-                    ┌───────▼──────────────────────────────────┐
-                    │  Alfresco (Content Repository)          │
-                    │  ├─ OCR Results                         │
-                    │  ├─ Original Images                     │
-                    │  └─ CMIS Access                         │
+                    ┌───────▼─────────────────────────────────┐
+                    │  Alfresco (Content Repository)         │
+                    │  ├─ OCR Results                        │
+                    │  ├─ Original Images                    │
+                    │  └─ CMIS Access                        │
                     └────────────────────────────────────────┘
 
-    ┌─────────────────────── Observability Stack ───────────────────────────┐
-    │  Prometheus (:30090) → Grafana (:30000) ← Loki + Tempo (Traces)      │
-    │  Metrics: requests, errors, latency, k8s health, .NET API metrics     │
+    ┌──────────────────────── Observability Stack ───────────────────────────┐
+    │  Prometheus (:30090) → Grafana (:30000) ← Loki + Tempo (Traces)       │
+    │  Metrics: requests, errors, latency, k8s health, .NET API metrics      │
     └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -41,11 +63,26 @@ A Kubernetes-based OCR solution that routes image OCR requests through a **FastA
 
 ## Architecture Overview
 
-### OCR Gateway + Engines (Kubernetes)
-FastAPI gateway routes `/ocr` POST requests to one of three OCR engines running in separate pods. Each engine loads large ML models (especially EasyOCR and PaddleOCR) 
+### Microservice Components
+
+#### OCR Gateway (Kubernetes)
+FastAPI gateway receives `/ocr` POST requests and submits OCR jobs to RabbitMQ instead of routing directly to engines. This decoupling enables:
+- Asynchronous job processing and resilience
+- Load balancing across multiple engine workers
+- Job persistence and retry mechanisms
+
+#### RabbitMQ (Message Queue)
+- **Async Job Processing**: Decouples OCR requests from immediate processing
+- **Job Queue Management**: Manages OCR tasks, engine load balancing, and retry logic
+- **Service Communication**: Enables asynchronous communication between microservices
+
+#### Redis (Caching & State)
+- **Request Caching**: Caches OCR results to avoid redundant processing
+- **Session Management**: Stores gateway session state and distributed cache
+- **Performance Optimization**: Reduces latency for repeated OCR requests on same content
 
 ### .NET API Integration
-The **dotnet-api**  receives OCR results via the `/ocrdata` endpoint. It:
+The **dotnet-api** receives OCR results via the `/ocrdata` endpoint. It:
 - Accepts multipart form data: `file` (original image), `ocrText` (OCR result), `ocrEngine` (which engine processed it)
 - Uploads processed files to **Alfresco** via a REST api with metadata
 
@@ -80,9 +117,12 @@ ocr-lab/
 │   ├── gateway.yaml            # Gateway Deployment + NodePort Service
 │   ├── engine-tesseract.yaml   # Tesseract Deployment + ClusterIP Service
 │   ├── engine-easyocr.yaml     # EasyOCR Deployment + ClusterIP Service
-│   └── engine-paddle.yaml      # PaddleOCR Deployment + ClusterIP Service
+│   ├── engine-paddle.yaml      # PaddleOCR Deployment + ClusterIP Service
+│   ├── rabbitmq.yaml           # RabbitMQ Deployment + Service (async job queue)
+│   └── helm/
+│       └── redis-values.yaml   # Redis Helm chart values (caching & state)
 ├── gateway/
-│   ├── main.py                 # FastAPI router
+│   ├── main.py                 # FastAPI router with RabbitMQ integration
 │   └── Dockerfile
 └── engines/
     ├── tesseract/
@@ -120,13 +160,25 @@ docker build -t ocr-lab/engine-paddle:latest    ./engines/paddle
 ### · Apply Kubernetes manifests
 
 ```bash
-# Apply in order — namespace first, then storage, then workloads
+# Apply in order — namespace first, then storage, then message queue, cache, then workloads
 kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/models-pv.yaml
+kubectl apply -f k8s/rabbitmq.yaml
 kubectl apply -f k8s/gateway.yaml
 kubectl apply -f k8s/engine-tesseract.yaml
 kubectl apply -f k8s/engine-easyocr.yaml
 kubectl apply -f k8s/engine-paddle.yaml
+```
+
+### · Deploy Redis (via Helm)
+
+```bash
+# Add Helm repository if not already added
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+
+# Deploy Redis for caching and distributed state
+helm install redis bitnami/redis \
+  -n ocr-lab -f ocr-lab/k8s/helm/redis-values.yaml
 ```
 
 ---
@@ -141,14 +193,16 @@ Expected output (EasyOCR/Paddle take longer on first start due to model download
 
 ```
 NAME                                READY   STATUS    RESTARTS   AGE
+rabbitmq-0                          1/1     Running   0          15s
+redis-master-0                      1/1     Running   0          15s
+redis-replica-0                     1/1     Running   0          15s
 gateway-7d9f6b-xxxx                 1/1     Running   0          30s
 engine-tesseract-5c8b4d-xxxx        1/1     Running   0          30s
 engine-easyocr-6f7a2c-xxxx          0/1     Running   0          45s   ← startup probe running
 engine-paddle-8e3d1b-xxxx           0/1     Running   0          45s   ← startup probe running
 ```
 
-Once all show `1/1 Running`, the startup probes have passed and the gateway will
-begin routing traffic to them.
+Once all show `1/1 Running`, RabbitMQ, Redis, and OCR services are ready.
 
 ---
 
@@ -209,30 +263,21 @@ Login with **admin/admin** and navigate to the **"OCR Observability Platform"** 
 - **Distributed Traces**: Recent gateway traces from Tempo, correlated with logs
 - **Logs**: Success logs, error logs, .NET API upload activity via Loki
 
-#### Prometheus Metrics Collected
-
-| Job | Target | Port | Metrics |
-|-----|--------|------|---------|
-| ocr-gateway | gateway:8000 | 8000 | ocr_requests_total, ocr_errors_total, ocr_processing_seconds_bucket |
-| engine-tesseract | engine-tesseract:8001 | 8001 | engine_requests_total, engine_processing_seconds_bucket |
-| engine-easyocr | engine-easyocr:8002 | 8002 | engine_requests_total, engine_processing_seconds_bucket |
-| engine-paddle | engine-paddle:8003 | 8003 | engine_requests_total, engine_processing_seconds_bucket |
-| dotnet-api | host.docker.internal:5122 | 5122 | dotnet_processing_seconds_bucket, http_requests_total |
-| kubernetes-cadvisor | kubernetes.default.svc:443 | — | container_cpu_usage, container_memory_working_set |
-| kube-state-metrics | prometheus-kube-state-metrics:8080 | 8080 | kube_pod_status_phase, kube_pod_container_status_restarts_total |
 
 
 
 ## Ports Reference
 
-| Service          | Internal port | NodePort |
-|------------------|---------------|----------|
-| Gateway          | 8000          | 30080    |
-| Engine Tesseract | 8001          | —        |
-| Engine EasyOCR   | 8002          | —        |
-| Engine PaddleOCR | 8003          | —        |
+| Service          | Internal port | NodePort | Purpose |
+|------------------|---------------|----------|---------|
+| Gateway          | 8000          | 30080    | OCR request ingestion |
+| Engine Tesseract | 8001          | —        | OCR processing (ClusterIP only) |
+| Engine EasyOCR   | 8002          | —        | OCR processing (ClusterIP only) |
+| Engine PaddleOCR | 8003          | —        | OCR processing (ClusterIP only) |
+| RabbitMQ         | 5672          | —        | AMQP message queue (ClusterIP only) |
+| Redis            | 6379          | —        | Cache & distributed state (ClusterIP only) |
 
-Engine services are `ClusterIP` — they are only reachable from inside the cluster (i.e. from the gateway pod).
+Engine, RabbitMQ, and Redis services are `ClusterIP` — they are only reachable from inside the cluster.
 
 ---
 
@@ -365,6 +410,7 @@ helm uninstall grafana -n ocr-lab
 helm uninstall loki -n ocr-lab
 helm uninstall tempo -n ocr-lab
 helm uninstall otel-collector -n ocr-lab
+helm uninstall redis -n ocr-lab
 
 ```
 
@@ -377,7 +423,7 @@ helm uninstall otel-collector -n ocr-lab
 kubectl delete -f ocr-lab/k8s/
 
 # Uninstall Helm charts
-helm uninstall prometheus grafana loki tempo otel-collector -n ocr-lab
+helm uninstall prometheus grafana loki tempo otel-collector redis -n ocr-lab
 
 # Delete namespace
 kubectl delete namespace ocr-lab

@@ -180,9 +180,24 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(ocr_errors_total[5m]))",
-          "legendFormat": "Errors (5m)",
+          "editorMode": "code",
+          "expr": "sum(increase(ocr_jobs_processed_total{status=\"ocr_error\"}[5m]))",
+          "legendFormat": "Ocr Errors (5m)",
+          "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(ocr_jobs_processed_total{status=\"dotnet_error\"}[5m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Dotnet Errors (5m)",
+          "range": true,
+          "refId": "B"
         }
       ],
       "title": "Errors (last 5m)",
@@ -251,9 +266,24 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(ocr_errors_total[5m])) / sum(rate(ocr_requests_total[5m]))",
-          "legendFormat": "Error Rate",
+          "editorMode": "code",
+          "expr": "sum(rate(ocr_jobs_processed_total{status=\"ocr_error\"}[5m])) / sum(rate(ocr_requests_total[5m]))",
+          "legendFormat": "Ocr Error Rate",
+          "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(ocr_jobs_processed_total{status=\"dotnet_error\"}[5m])) / sum(rate(ocr_requests_total[5m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Dotnet Error Rate",
+          "range": true,
+          "refId": "B"
         }
       ],
       "title": "Error Rate",
@@ -322,7 +352,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(ocr_processing_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(ocr_engine_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p95 Latency",
           "refId": "A"
         }
@@ -393,7 +423,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(dotnet_processing_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(ocr_job_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p95 .NET Latency",
           "refId": "A"
         }
@@ -688,8 +718,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(ocr_requests_total{status=\"success\"}[1m])) by (engine)",
+          "editorMode": "code",
+          "expr": "sum(rate(ocr_jobs_processed_total{status=\"ocr_success\"}[1m])) by (engine)",
           "legendFormat": "{{engine}} - success",
+          "range": true,
           "refId": "A"
         },
         {
@@ -697,8 +729,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(ocr_requests_total{status=\"error\"}[1m])) by (engine)",
+          "editorMode": "code",
+          "expr": "sum(rate(ocr_jobs_processed_total{status=\"ocr_error\"}[1m])) by (engine)",
           "legendFormat": "{{engine}} - error",
+          "range": true,
           "refId": "B"
         }
       ],
@@ -810,7 +844,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(ocr_processing_seconds_bucket[5m])) by (le, engine))",
+          "expr": "histogram_quantile(0.50, sum(rate(ocr_engine_duration_seconds_bucket[5m])) by (le, engine))",
           "legendFormat": "{{engine}} - p50",
           "refId": "A"
         },
@@ -819,7 +853,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(ocr_processing_seconds_bucket[5m])) by (le, engine))",
+          "expr": "histogram_quantile(0.95, sum(rate(ocr_engine_duration_seconds_bucket[5m])) by (le, engine))",
           "legendFormat": "{{engine}} - p95",
           "refId": "B"
         },
@@ -828,7 +862,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(ocr_processing_seconds_bucket[5m])) by (le, engine))",
+          "expr": "histogram_quantile(0.99, sum(rate(ocr_engine_duration_seconds_bucket[5m])) by (le, engine))",
           "legendFormat": "{{engine}} - p99",
           "refId": "C"
         }
@@ -928,7 +962,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(dotnet_processing_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(ocr_job_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": ".NET API - p50",
           "refId": "A"
         },
@@ -937,7 +971,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(dotnet_processing_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(ocr_job_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": ".NET API - p95",
           "refId": "B"
         },
@@ -946,7 +980,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(dotnet_processing_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(ocr_job_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": ".NET API - p99",
           "refId": "C"
         }
@@ -1058,8 +1092,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(ocr_errors_total[5m])) by (engine)",
+          "editorMode": "code",
+          "expr": "sum(increase(ocr_jobs_processed_total{status=\"ocr_error\"}[5m])) by (engine)",
           "legendFormat": "{{engine}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -1158,8 +1194,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(ocr_errors_total[5m])) by (engine) / sum(rate(ocr_requests_total[5m])) by (engine)",
+          "editorMode": "code",
+          "expr": "sum(rate(ocr_jobs_processed_total{status=\"ocr_error\"}[5m])) by (engine) / sum(rate(ocr_requests_total[5m])) by (engine)",
           "legendFormat": "{{engine}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -2432,9 +2470,34 @@
             "uid": "loki"
           },
           "direction": "backward",
-          "expr": "{job=\"ocr-lab/gateway\"} |= `OCR_SUCCESS`",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-tesseract\"} |= `OCR_SUCCESS`",
           "queryType": "range",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-easyocr\"} |= `OCR_SUCCESS`",
+          "hide": false,
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-paddle\"} |= `OCR_SUCCESS`",
+          "hide": false,
+          "queryType": "range",
+          "refId": "C"
         }
       ],
       "title": "Successful OCR Logs",
@@ -2477,9 +2540,34 @@
             "uid": "loki"
           },
           "direction": "backward",
-          "expr": "{job=\"ocr-lab/gateway\"} |= `OCR_ERROR`",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-tesseract\"} |= `OCR_FAILED`",
           "queryType": "range",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-easyocr\"} |= `OCR_FAILED`",
+          "hide": false,
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-paddle\"} |= `OCR_FAILED`",
+          "hide": false,
+          "queryType": "range",
+          "refId": "C"
         }
       ],
       "title": "Error Logs",
@@ -2522,12 +2610,548 @@
             "uid": "loki"
           },
           "direction": "backward",
-          "expr": "{job=\"ocr-lab/gateway\"} |= `DOTNET`",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-tesseract\"} |= `DOTNET`",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-easyocr\"} |= `DOTNET`",
+          "hide": false,
+          "queryType": "range",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "{job=\"ocr-lab/engine-paddle\"} |= `DOTNET`",
+          "hide": false,
+          "queryType": "range",
+          "refId": "C"
+        }
+      ],
+      "title": ".NET API Upload Logs",
+      "type": "logs"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 101
+      },
+      "id": 200,
+      "panels": [],
+      "title": "🐇 Queue & Workers",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 102
+      },
+      "id": 201,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rabbitmq_queue_messages{queue=~\"ocr\\\\..*\"}",
+          "legendFormat": "{{queue}} — ready",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "rabbitmq_queue_messages_unacked{queue=~\"ocr\\\\..*\"}",
+          "legendFormat": "{{queue}} — unacked",
+          "refId": "B"
+        }
+      ],
+      "title": "Queue Depth per Engine (ready + unacked)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 102
+      },
+      "id": 202,
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(ocr_jobs_processed_total{status=\"success\"}[1m])) by (engine)",
+          "legendFormat": "{{engine}} — success",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(ocr_jobs_processed_total{status=\"ocr_error\"}[1m])) by (engine)",
+          "legendFormat": "{{engine}} — ocr_error",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(ocr_jobs_processed_total{status=\"dotnet_error\"}[1m])) by (engine)",
+          "legendFormat": "{{engine}} — dotnet_error",
+          "refId": "C"
+        }
+      ],
+      "title": "Jobs Processed by Status (stacked bars)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 110
+      },
+      "id": 203,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.50, sum(rate(ocr_engine_duration_seconds_bucket[5m])) by (le, engine))",
+          "legendFormat": "{{engine}} — p50 OCR",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(ocr_engine_duration_seconds_bucket[5m])) by (le, engine))",
+          "legendFormat": "{{engine}} — p95 OCR",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum(rate(ocr_job_duration_seconds_bucket[5m])) by (le, engine))",
+          "legendFormat": "{{engine}} — p95 end-to-end",
+          "refId": "C"
+        }
+      ],
+      "title": "Worker Latency — OCR vs End-to-End (p50/p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 110
+      },
+      "id": 204,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(ocr_requests_total{status=\"queued\"}[1m])) by (engine)",
+          "legendFormat": "{{engine}} — queued/s",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(ocr_jobs_processed_total{status=\"success\"}[1m])) by (engine)",
+          "legendFormat": "{{engine}} — done/s",
+          "refId": "B"
+        }
+      ],
+      "title": "Jobs Queued vs Completed Rate by Engine",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 118
+      },
+      "id": 205,
+      "options": {
+        "dedupStrategy": "none",
+        "detailsMode": "inline",
+        "enableInfiniteScrolling": false,
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showControls": true,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "syntaxHighlighting": true,
+        "wrapLogMessage": true
+      },
+      "pluginVersion": "12.3.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "expr": "{namespace=\"ocr-lab\"} |~ `JOB_DONE|JOB_QUEUED|OCR_SUCCESS|DOTNET_FAILED|OCR_FAILED`",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": ".NET API Upload Logs",
+      "title": "Worker Job Lifecycle Logs (all engines)",
       "type": "logs"
     }
   ],
@@ -2549,7 +3173,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "OCR Observability Platform (Gateway + Engines + Alfresco + kubernetes)",
-  "uid": "76fc67e6-5394-4ebf-9426-67185ccbb48b",
-  "version": 4
+  "title": "OCR Observability Platform (Gateway + Engines + Alfresco + Kubernetes + Async Workers) v2",
+  "uid": "86fc67e6-5394-4ebf-9426-67185ccbb48b",
+  "version": 2
 }

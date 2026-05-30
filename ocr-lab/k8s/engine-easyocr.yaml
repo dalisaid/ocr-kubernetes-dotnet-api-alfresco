@@ -17,23 +17,33 @@ spec:
     spec:
       containers:
         - name: engine-easyocr
-          image: ocr-easyocr:latest   # ✅ match your docker build
+          image: ocr-easyocr:latest
           imagePullPolicy: Never
 
           ports:
-            - containerPort: 8002     # ⚠️ IMPORTANT (FastAPI default)
+            - containerPort: 8002
 
-          # ❌ REMOVED:
-          # - volumes
-          # - volumeMounts
-          # - MODEL_STORAGE_DIR
+          env:
+            # ── Worker infrastructure ──────────────────────────
+            - name: RABBITMQ_URL
+              value: "amqp://admin:admin@rabbitmq:5672/"
+            - name: REDIS_URL
+              value: "redis://redis-master:6379"
+            - name: JOB_TTL
+              value: "3600"
+            # .NET API is outside the cluster on the host machine
+            - name: DOTNET_API_URL
+              value: "http://host.docker.internal:5122/ocrdata"
+            # ── Observability ──────────────────────────────────
+            - name: OTEL_ENDPOINT
+              value: "otel-collector-opentelemetry-collector:4317"
 
           startupProbe:
             httpGet:
               path: /healthz
               port: 8002
             failureThreshold: 30
-            periodSeconds: 5
+            periodSeconds: 20
 
           readinessProbe:
             httpGet:

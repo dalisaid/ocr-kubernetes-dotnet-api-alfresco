@@ -17,22 +17,32 @@ spec:
     spec:
       containers:
         - name: engine-paddle
-          image: ocr-paddle:latest   # ✅ FIXED
+          image: ocr-paddle:latest
           imagePullPolicy: Never
 
           ports:
-            - containerPort: 8003    # ✅ FIXED
+            - containerPort: 8003
 
-          # ❌ REMOVED:
-          # - volumes
-          # - volumeMounts
-          # - MODEL_STORAGE_DIR
+          env:
+            # ── Worker infrastructure ──────────────────────────
+            - name: RABBITMQ_URL
+              value: "amqp://admin:admin@rabbitmq:5672/"
+            - name: REDIS_URL
+              value: "redis://redis-master:6379"
+            - name: JOB_TTL
+              value: "3600"
+            # .NET API is outside the cluster on the host machine
+            - name: DOTNET_API_URL
+              value: "http://host.docker.internal:5122/ocrdata"
+            # ── Observability ──────────────────────────────────
+            - name: OTEL_ENDPOINT
+              value: "otel-collector-opentelemetry-collector:4317"
 
           startupProbe:
             httpGet:
               path: /healthz
               port: 8003
-            failureThreshold: 40     # Paddle can be slow
+            failureThreshold: 40
             periodSeconds: 5
 
           readinessProbe:

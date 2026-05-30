@@ -2,8 +2,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir fastapi uvicorn httpx python-multipart prometheus-client \
-    opentelemetry-api opentelemetry-sdk \
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    httpx \
+    python-multipart \
+    prometheus-client \
+    aio-pika \
+    redis[asyncio] \
+    opentelemetry-api \
+    opentelemetry-sdk \
     opentelemetry-exporter-otlp \
     opentelemetry-exporter-otlp-proto-grpc \
     opentelemetry-instrumentation-fastapi \

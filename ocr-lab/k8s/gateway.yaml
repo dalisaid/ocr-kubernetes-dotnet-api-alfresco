@@ -15,13 +15,24 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: ocr-gateway:latest   # ✅ FIXED
+          image: ocr-gateway:latest
           imagePullPolicy: Never
 
           ports:
             - containerPort: 8000
 
           env:
+            # ── Async infrastructure ───────────────────────────
+            - name: RABBITMQ_URL
+              value: "amqp://admin:admin@rabbitmq:5672/"
+            - name: REDIS_URL
+              value: "redis://redis-master:6379"
+            - name: JOB_TTL
+              value: "3600"
+
+            # ── Engine URLs kept for /engines info endpoint ────
+            # Gateway no longer calls these directly (async now)
+            # but the /engines list endpoint still references them
             - name: TESSERACT_URL
               value: "http://engine-tesseract:8001"
             - name: EASYOCR_URL

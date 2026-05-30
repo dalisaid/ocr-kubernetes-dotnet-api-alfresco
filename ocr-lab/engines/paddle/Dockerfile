@@ -8,22 +8,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Disable MKLDNN (prevents oneDNN crash)
+# CRITICAL — prevents oneDNN/MKLDNN crash on CPU-only environments
 ENV FLAGS_use_mkldnn=false
 
 WORKDIR /app
 
+# numpy pinned — PaddleOCR 2.7.0.3 is incompatible with numpy 2.x
 RUN pip install --no-cache-dir \
-   
     fastapi \
     uvicorn \
     pillow \
     numpy==1.26.4 \
     python-multipart \
     paddlepaddle==2.6.2 \
-    paddleocr==2.7.0.3
-
-
+    paddleocr==2.7.0.3 \
+    aio-pika \
+    redis[asyncio] \
+    httpx \
+    prometheus-client \
+    opentelemetry-api \
+    opentelemetry-sdk \
+    opentelemetry-exporter-otlp \
+    opentelemetry-exporter-otlp-proto-grpc \
+    opentelemetry-instrumentation-fastapi
 
 COPY main.py .
 
