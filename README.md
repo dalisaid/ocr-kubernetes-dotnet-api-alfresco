@@ -263,6 +263,11 @@ Login with **admin/admin** and navigate to the **"OCR Observability Platform"** 
 - **Distributed Traces**: Recent gateway traces from Tempo, correlated with logs
 - **Logs**: Success logs, error logs, .NET API upload activity via Loki
 
+Snapshot:
+
+<img width="1542" height="799" alt="image" src="https://github.com/user-attachments/assets/33710102-443b-45bc-a4c4-0311495ea28f" />
+
+Link:https://snapshots.raintank.io/dashboard/snapshot/NyUAzLPmHNzlqi3715z45vPKE9hvhgkI?orgId=0&from=2026-05-30T19:04:21.969Z&to=2026-05-30T19:34:21.969Z&timezone=browser&refresh=10s
 
 
 
