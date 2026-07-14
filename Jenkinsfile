@@ -6,6 +6,14 @@ pipeline {
     }
 
     stages {
+	
+	
+		stage('Debug') {
+			steps {
+				sh 'kubectl config view'
+				sh 'kubectl cluster-info'
+			}		
+		}
 
         stage('Build Images') {
             steps {
