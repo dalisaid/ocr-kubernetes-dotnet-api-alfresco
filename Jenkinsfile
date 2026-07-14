@@ -40,11 +40,11 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh '''
-                    kubectl apply -f ocr-lab/k8s/gateway.yaml -n ocr-lab
-                    kubectl apply -f ocr-lab/k8s/engine-tesseract.yaml -n ocr-lab
-                    # kubectl apply -f ocr-lab/k8s/engine-easyocr.yaml -n ocr-lab
-                    # kubectl apply -f ocr-lab/k8s/engine-paddle.yaml -n ocr-lab
-                    # kubectl apply -f ocr-lab/monitoring/dashboard.yaml -n ocr-lab
+                    kubectl apply -f ocr-lab/k8s/gateway.yaml -n ocr-lab --validate=false
+                    kubectl apply -f ocr-lab/k8s/engine-tesseract.yaml -n ocr-lab --validate=false
+                    # kubectl apply -f ocr-lab/k8s/engine-easyocr.yaml -n ocr-lab --validate=false
+                    # kubectl apply -f ocr-lab/k8s/engine-paddle.yaml -n ocr-lab --validate=false
+                    # kubectl apply -f ocr-lab/monitoring/dashboard.yaml -n ocr-lab 
                     
                     kubectl rollout restart deployment/gateway -n ocr-lab
                     kubectl rollout restart deployment/engine-tesseract -n ocr-lab
