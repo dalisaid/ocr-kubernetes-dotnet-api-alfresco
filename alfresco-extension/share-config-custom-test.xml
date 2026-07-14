@@ -1,0 +1,104 @@
+<alfresco-config>
+
+  <!-- =====================================================
+       1. EDIT PROPERTIES FORM
+       Controls what fields appear when a user opens
+       "Edit Properties" on a document that carries the
+       ocr:ocrData aspect.
+       ===================================================== -->
+  <config evaluator="aspect" condition="ocr:ocrData">
+
+    <forms>
+
+      <form>
+
+        <field-visibility>
+
+          <!-- Keep default fields -->
+          <show id="cm:name"/>
+          <show id="cm:title"/>
+          <show id="cm:description"/>
+
+          <!-- OCR fields -->
+          <show id="ocr:text"/>
+          <show id="ocr:engine"/>
+
+        </field-visibility>
+
+        <appearance>
+
+          <field id="ocr:text">
+            <label>OCR Text</label>
+            <control template="/org/alfresco/components/form/controls/textarea.ftl"/>
+          </field>
+
+          <field id="ocr:engine">
+            <label>OCR Engine</label>
+          </field>
+
+        </appearance>
+
+      </form>
+
+    </forms>
+
+  </config>
+
+  <!-- =====================================================
+       2. ADVANCED SEARCH FORM
+       Same aspect, but a separate form (id="search") used
+       specifically by the Advanced Search page. This is what
+       actually renders the "OCR Text" / "OCR Engine" inputs
+       on the Advanced Search screen.
+       ===================================================== -->
+  <config evaluator="aspect" condition="ocr:ocrData">
+
+    <forms>
+
+      <form id="search">
+
+        <field-visibility>
+          <show id="ocr:text"/>
+          <show id="ocr:engine"/>
+        </field-visibility>
+
+        <appearance>
+
+          <field id="ocr:text">
+            <label>OCR Text</label>
+            <control template="/org/alfresco/components/form/controls/textarea.ftl"/>
+          </field>
+
+          <field id="ocr:engine">
+            <label>OCR Engine</label>
+          </field>
+
+        </appearance>
+
+      </form>
+
+    </forms>
+
+  </config>
+
+  <!-- =====================================================
+       3. "LOOK FOR" DROPDOWN REGISTRATION
+       Without this, the ocr:ocrData aspect never shows up as
+       a selectable option in Advanced Search's "Look for"
+       dropdown, and the search form above is never reachable.
+       ===================================================== -->
+  <config evaluator="string-compare" condition="Search">
+
+    <advanced-search>
+
+      <forms>
+        <form labelId="search.form.label.cm_content" descriptionId="search.form.desc.cm_content">cm:content</form>
+        <form labelId="search.form.label.cm_folder" descriptionId="search.form.desc.cm_folder">cm:folder</form>
+        <form labelId="ocr.search.label" descriptionId="ocr.search.desc">ocr:ocrData</form>
+      </forms>
+
+    </advanced-search>
+
+  </config>
+
+</alfresco-config>

@@ -1,0 +1,36 @@
+# ============================================================
+# Dockerfile.jenkins
+# Custom Jenkins image with Docker CLI and kubectl preinstalled.
+# Build:   docker build -t jenkins-custom:latest -f Dockerfile.jenkins .
+# Run:     docker run -d \
+#            --name jenkins \
+#            -p 9090:8080 \
+#            -p 50000:50000 \
+#            -v jenkins_home:/var/jenkins_home \
+#            -v //var/run/docker.sock:/var/run/docker.sock \
+#            jenkins-custom:latest
+# ============================================================
+
+FROM jenkins/jenkins:lts
+
+USER root
+
+# Install curl and Docker CLI
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -fsSL https://get.docker.com | sh
+
+# Install kubectl v1.33.0
+RUN curl -LO https://dl.k8s.io/release/v1.33.0/bin/linux/amd64/kubectl && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/kubectl
+
+# Copy kubeconfig and patch it for use inside Docker
+COPY kubeconfig /root/.kube/config
+RUN sed -i 's/127.0.0.1/host.docker.internal/g' /root/.kube/config
+
+# Disable TLS verification for local kind cluster
+RUN kubectl config set-cluster docker-desktop --insecure-skip-tls-verify=true
+
+# Switch back to jenkins user for security
+USER jenkins

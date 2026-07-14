@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model name="ocr:ocrModel" xmlns="http://www.alfresco.org/model/dictionary/1.0">
+
+    <description>OCR Content Model</description>
+    <author>You</author>
+    <version>1.0</version>
+	
+	 <imports>
+        <import uri="http://www.alfresco.org/model/dictionary/1.0" prefix="d"/>
+    </imports>
+	
+    <!-- Namespace -->
+    <namespaces>
+        <namespace uri="http://example.com/model/ocr/1.0" prefix="ocr"/>
+    </namespaces>
+
+    <!-- Aspect -->
+    <aspects>
+        <aspect name="ocr:ocrData">
+            <title>OCR Data</title>
+            <properties>
+
+                <property name="ocr:text">
+					<title>OCR Text</title>
+                    <type>d:text</type>
+					<index enabled="true">
+						<atomic>true</atomic>
+						<stored>true</stored>
+						<tokenised>true</tokenised>
+						
+					</index>
+                </property>
+
+                <property name="ocr:engine">
+					<title>OCR Engine</title>
+                    <type>d:text</type>
+					<index enabled="true">
+						<atomic>true</atomic>
+						<stored>true</stored>
+						<tokenised>true</tokenised>
+					</index>
+                </property>
+
+            </properties>
+        </aspect>
+    </aspects>
+
+</model>

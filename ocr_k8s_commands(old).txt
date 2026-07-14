@@ -37,17 +37,8 @@ kubectl apply -f k8s/engine-easyocr.yaml -n ocr-lab
 kubectl apply -f k8s/engine-paddle.yaml -n ocr-lab
 kubectl apply -f k8s/gateway.yaml -n ocr-lab
 
-cd monitoring
 
-kubectl apply -f monitoring/prometheus-config.yaml -n ocr-lab
-kubectl apply -f monitoring/prometheus-deployment.yaml -n ocr-lab
-kubectl apply -f monitoring/prometheus-service.yaml -n ocr-lab
-kubectl apply -f monitoring/loki-config.yaml -n ocr-lab
-kubectl apply -f monitoring/loki-deployment.yaml -n ocr-lab
-kubectl apply -f monitoring/loki-service.yaml -n ocr-lab
-kubectl apply -f monitoring/promtail-config.yaml -n ocr-lab
-kubectl apply -f monitoring/promtail-daemonset.yaml -n ocr-lab
-kubectl apply -f monitoring/promtail-rbac.yaml -n ocr-lab
+
 
 # OR deploy everything:
 kubectl apply -f .

@@ -117,7 +117,7 @@ public class AlfrescoService
         //trying custom models -->
         //step 1: add aspect to node so we can add custom properties for ocr data
 
-       /*  var aspectPayload = new
+         var aspectPayload = new
         {
             aspectNames = new[] { "ocr:ocrData" }
         };
@@ -132,16 +132,20 @@ public class AlfrescoService
         );
         Console.WriteLine(aspectResponse.StatusCode);
         Console.WriteLine(await aspectResponse.Content.ReadAsStringAsync());
-        aspectResponse.EnsureSuccessStatusCode(); */
+        aspectResponse.EnsureSuccessStatusCode(); 
         //
         //step 2: update node with ocr metadata
-        
+        //
         var metadataPayload = new
         {
-
+             aspectNames = new[] { "cm:titled" },
             properties = new Dictionary<string, object>
             {   { "cm:name", file.FileName },
-                { "cm:description", $"OCR Engine: {ocrEngine}\n\n---\n\nExtracted Text: {ocrText}" },
+                /*{ "cm:title", $"{ocrText}" },*/
+                {"ocr:text", ocrText},
+                {"ocr:engine", ocrEngine}
+
+                //{ "cm:description", $"OCR Engine: {ocrEngine}\n\n---\n\nExtracted Text: {ocrText}" },
                 
                 
             },
@@ -162,7 +166,7 @@ public class AlfrescoService
         );
 
         updateResponse.EnsureSuccessStatusCode();
-
+//
         return nodeId;
     }
 

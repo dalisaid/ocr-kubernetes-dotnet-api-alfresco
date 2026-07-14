@@ -1,0 +1,261 @@
+================================================================================
+  OCR LAB — KUBERNETES CLUSTER SETUP GUIDE
+  Société Tunisienne de Banque (STB)
+================================================================================
+
+IMPORTANT NOTES
+---------------
+- Kubernetes runs via Docker Desktop (kind provisioner, v1.36.1)
+- kind does NOT expose NodePort services to the host — use port-forward instead
+- kind does NOT share the local Docker daemon — images must be available via
+  imagePullPolicy: IfNotPresent (they get pulled/cached on first run)
+- Pods do NOT appear in Docker Desktop's container tab (kind limitation)
+- Use kubectl commands or Grafana for monitoring instead
+
+
+================================================================================
+  PREREQUISITES
+================================================================================
+
+1. Docker Desktop installed and running
+2. Kubernetes enabled in Docker Desktop:
+   Settings → Kubernetes → Enable Kubernetes → kind → Apply & Restart
+3. kubectl available in PowerShell
+4. Helm installed (https://helm.sh/docs/intro/install/)
+5. ngrok installed and authenticated
+
+
+================================================================================
+  STEP 1 — ADD HELM REPOS
+================================================================================
+
+Run once (or after a fresh install):
+
+  helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+  helm repo add grafana https://grafana.github.io/helm-charts
+  helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+  helm repo add bitnami https://charts.bitnami.com/bitnami
+  helm repo update
+
+
+================================================================================
+  STEP 2 — CREATE NAMESPACE
+================================================================================
+
+  kubectl apply -f k8s/namespace.yaml
+
+
+================================================================================
+  STEP 3 — INSTALL ServiceMonitor CRD (required by Redis)
+================================================================================
+
+This CRD is NOT included in the standard prometheus chart.
+Install it once before deploying Redis:
+
+  kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+
+
+================================================================================
+  STEP 4 — DEPLOY CORE SERVICES
+================================================================================
+
+Order matters — RabbitMQ must be running before the OCR engines.
+
+  # RabbitMQ (must be first)
+  kubectl apply -f k8s/rabbitmq.yaml -n ocr-lab
+
+  # Wait for RabbitMQ to be Running before continuing:
+  kubectl get pods -n ocr-lab -w
+
+  # Gateway
+  kubectl apply -f k8s/gateway.yaml -n ocr-lab
+
+  # OCR Engines (deploy only what you need — easyocr and paddle are heavy)
+  kubectl apply -f k8s/engine-tesseract.yaml -n ocr-lab
+  # kubectl apply -f k8s/engine-easyocr.yaml -n ocr-lab    # optional
+  # kubectl apply -f k8s/engine-paddle.yaml -n ocr-lab     # optional
+
+  # Redis
+  helm install redis bitnami/redis -n ocr-lab -f k8s/helm/redis-values.yaml
+
+
+================================================================================
+  STEP 5 — DEPLOY MONITORING STACK
+================================================================================
+
+  # Prometheus
+  helm install prometheus prometheus-community/prometheus \
+    -n ocr-lab -f monitoring/prometheus-values.yaml
+
+  # Loki + Promtail
+  helm install loki grafana/loki-stack \
+    -n ocr-lab -f monitoring/loki-values.yaml
+
+  # Tempo
+  helm install tempo grafana/tempo \
+    -n ocr-lab -f monitoring/tempo-values.yaml
+
+  # OpenTelemetry Collector
+  helm install otel-collector open-telemetry/opentelemetry-collector \
+    -n ocr-lab -f monitoring/otel-values.yaml
+
+  # Grafana
+  helm install grafana grafana/grafana \
+    -n ocr-lab -f monitoring/grafana-values.yaml
+
+  # Dashboard & RBAC
+  kubectl apply -f monitoring/dashboard.yaml -n ocr-lab
+  kubectl apply -f monitoring/rbac.yaml -n ocr-lab
+
+
+================================================================================
+  STEP 6 — BUILD IMAGES (if not already built)
+================================================================================
+
+Only needed if images are not present in Docker:
+
+  docker build -t ocr-gateway:latest ./gateway
+  docker build -t ocr-tesseract:latest ./engines/tesseract
+  docker build -t ocr-easyocr:latest ./engines/easyocr
+  docker build -t ocr-paddle:latest ./engines/paddle
+
+
+================================================================================
+  STEP 7 — PORT FORWARDS (run every session)
+================================================================================
+
+Save as start-ports.ps1 at the project root and run .\start-ports.ps1
+
+  Start-Process powershell { kubectl port-forward svc/grafana 30000:80 -n ocr-lab }
+  Start-Process powershell { kubectl port-forward svc/gateway 30010:8000 -n ocr-lab }
+  Start-Process powershell { kubectl port-forward svc/prometheus-server 30090:80 -n ocr-lab }
+  Start-Process powershell { kubectl port-forward svc/rabbitmq 15672:15672 -n ocr-lab }
+
+Access URLs:
+  Grafana      → http://localhost:30000   (admin / admin)
+  Gateway API  → http://localhost:30010/docs
+  Prometheus   → http://localhost:30090
+  RabbitMQ UI  → http://localhost:15672
+
+
+================================================================================
+  STEP 8 — CI/CD (Jenkins + ngrok)
+================================================================================
+
+Jenkins runs as a standalone Docker container (NOT inside Kubernetes):
+
+  docker run -d \
+    --name jenkins \
+    -p 9090:8080 \
+    -p 50000:50000 \
+    -v jenkins_home:/var/jenkins_home \
+    jenkins/jenkins:lts
+
+  Access Jenkins at: http://localhost:9090
+
+Start ngrok tunnel (run every session — URL changes each time on free plan):
+
+  ngrok http 9090
+
+Copy the ngrok URL and update the GitHub webhook:
+  GitHub repo → Settings → Webhooks → Payload URL:
+  https://<ngrok-url>/github-webhook/
+
+Update the webhook URL in GitHub every time ngrok is restarted.
+
+
+================================================================================
+  GRAFANA-VALUES.YAML — IMPORTANT NOTE
+================================================================================
+
+The grafana-values.yaml file must NOT include a Prometheus datasource entry.
+kube-prometheus-stack (if used) or the prometheus chart provisions it automatically.
+Having two default datasources causes Grafana to crash on startup.
+
+Only Tempo and Loki should be defined in the datasources section.
+
+
+================================================================================
+  COMMON ISSUES & FIXES
+================================================================================
+
+ISSUE: ErrImageNeverPull or ImagePullBackOff
+FIX:   Make sure imagePullPolicy is set to IfNotPresent in your manifests.
+       Rebuild the image if it doesn't exist locally:
+       docker build -t <image>:latest ./<path>
+
+ISSUE: NodePort URLs not working (e.g. localhost:30000)
+FIX:   kind doesn't expose NodePorts to the host.
+       Use port-forward instead (see Step 7).
+
+ISSUE: helm install fails with "ServiceMonitor CRD not found"
+FIX:   Run the CRD install command in Step 3 before installing Redis.
+
+ISSUE: Grafana crashes with "Only one datasource per organization can be marked as default"
+FIX:   Remove the Prometheus datasource entry from grafana-values.yaml.
+       Only keep Loki and Tempo entries.
+
+ISSUE: Pods not showing in Docker Desktop container tab
+FIX:   Expected behavior with kind. Use kubectl or Grafana instead:
+       kubectl get pods -n ocr-lab
+       kubectl logs <pod-name> -n ocr-lab -f
+
+ISSUE: ngrok URL changed after restart
+FIX:   Run ngrok http 9090 again, copy the new URL,
+       update it in GitHub → Settings → Webhooks.
+
+ISSUE: Cluster crashed / pods gone after Docker Desktop restart
+FIX:   The cluster itself survives restarts but pods need to be redeployed.
+       Rerun Steps 4 and 5. Images are preserved in Docker so no rebuild needed.
+
+
+================================================================================
+  USEFUL COMMANDS
+================================================================================
+
+  # Check all pods
+  kubectl get pods -n ocr-lab
+
+  # Watch pods live
+  kubectl get pods -n ocr-lab -w
+
+  # Check services
+  kubectl get svc -n ocr-lab
+
+  # View logs
+  kubectl logs <pod-name> -n ocr-lab -f
+
+  # Restart all deployments
+  kubectl rollout restart deployment -n ocr-lab
+
+  # Scale down everything (pause)
+  kubectl scale deployment --all --replicas=0 -n ocr-lab
+
+  # Scale back up
+  kubectl scale deployment --all --replicas=1 -n ocr-lab
+
+  # Full teardown
+  kubectl delete namespace ocr-lab
+
+  # Helm list
+  helm list -n ocr-lab
+
+  # Helm uninstall example
+  helm uninstall grafana -n ocr-lab
+
+
+================================================================================
+  SERVICE MAP
+================================================================================
+
+  rabbitmq       → ClusterIP  → 5672 (AMQP), 15672 (UI), 15692 (metrics)
+  gateway        → NodePort   → 8000 (internal) / 30010 (node)
+  engine-*       → ClusterIP  → 8001
+  redis          → ClusterIP  → 6379
+  prometheus     → NodePort   → 80 (internal) / 30090 (node)
+  grafana        → NodePort   → 80 (internal) / 30000 (node)
+  loki           → ClusterIP  → 3100
+  tempo          → ClusterIP  → 3200, 4317 (OTLP gRPC), 4318 (OTLP HTTP)
+  otel-collector → ClusterIP  → 4317 (gRPC), 4318 (HTTP)
+
+================================================================================

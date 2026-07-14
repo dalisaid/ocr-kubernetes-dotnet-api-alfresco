@@ -16,7 +16,7 @@ spec:
       containers:
         - name: gateway
           image: ocr-gateway:latest
-          imagePullPolicy: Never
+          imagePullPolicy: Always #use "Always" when testing jenkins otherwise "IfNotPresent" for local daemon
 
           ports:
             - containerPort: 8000
