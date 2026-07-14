@@ -7,8 +7,7 @@ IMPORTANT NOTES
 ---------------
 - Kubernetes runs via Docker Desktop (kind provisioner, v1.36.1)
 - kind does NOT expose NodePort services to the host — use port-forward instead
-- kind does NOT share the local Docker daemon — images must be available via
-  imagePullPolicy: IfNotPresent (they get pulled/cached on first run)
+- kind does NOT share the local Docker daemon — use imagePullPolicy: IfNotPresent
 - Pods do NOT appear in Docker Desktop's container tab (kind limitation)
 - Use kubectl commands or Grafana for monitoring instead
 
@@ -42,7 +41,7 @@ Run once (or after a fresh install):
   STEP 2 — CREATE NAMESPACE
 ================================================================================
 
-  kubectl apply -f k8s/namespace.yaml
+  kubectl apply -f ocr-lab/k8s/namespace.yaml
 
 
 ================================================================================
@@ -62,21 +61,21 @@ Install it once before deploying Redis:
 Order matters — RabbitMQ must be running before the OCR engines.
 
   # RabbitMQ (must be first)
-  kubectl apply -f k8s/rabbitmq.yaml -n ocr-lab
+  kubectl apply -f ocr-lab/k8s/rabbitmq.yaml -n ocr-lab
 
   # Wait for RabbitMQ to be Running before continuing:
   kubectl get pods -n ocr-lab -w
 
   # Gateway
-  kubectl apply -f k8s/gateway.yaml -n ocr-lab
+  kubectl apply -f ocr-lab/k8s/gateway.yaml -n ocr-lab
 
   # OCR Engines (deploy only what you need — easyocr and paddle are heavy)
-  kubectl apply -f k8s/engine-tesseract.yaml -n ocr-lab
-  # kubectl apply -f k8s/engine-easyocr.yaml -n ocr-lab    # optional
-  # kubectl apply -f k8s/engine-paddle.yaml -n ocr-lab     # optional
+  kubectl apply -f ocr-lab/k8s/engine-tesseract.yaml -n ocr-lab
+  # kubectl apply -f ocr-lab/k8s/engine-easyocr.yaml -n ocr-lab    # optional
+  # kubectl apply -f ocr-lab/k8s/engine-paddle.yaml -n ocr-lab     # optional
 
   # Redis
-  helm install redis bitnami/redis -n ocr-lab -f k8s/helm/redis-values.yaml
+  helm install redis bitnami/redis -n ocr-lab -f ocr-lab/k8s/helm/redis-values.yaml
 
 
 ================================================================================
@@ -85,27 +84,27 @@ Order matters — RabbitMQ must be running before the OCR engines.
 
   # Prometheus
   helm install prometheus prometheus-community/prometheus \
-    -n ocr-lab -f monitoring/prometheus-values.yaml
+    -n ocr-lab -f ocr-lab/monitoring/prometheus-values.yaml
 
   # Loki + Promtail
   helm install loki grafana/loki-stack \
-    -n ocr-lab -f monitoring/loki-values.yaml
+    -n ocr-lab -f ocr-lab/monitoring/loki-values.yaml
 
   # Tempo
   helm install tempo grafana/tempo \
-    -n ocr-lab -f monitoring/tempo-values.yaml
+    -n ocr-lab -f ocr-lab/monitoring/tempo-values.yaml
 
   # OpenTelemetry Collector
   helm install otel-collector open-telemetry/opentelemetry-collector \
-    -n ocr-lab -f monitoring/otel-values.yaml
+    -n ocr-lab -f ocr-lab/monitoring/otel-values.yaml
 
   # Grafana
   helm install grafana grafana/grafana \
-    -n ocr-lab -f monitoring/grafana-values.yaml
+    -n ocr-lab -f ocr-lab/monitoring/grafana-values.yaml
 
-  # Dashboard & RBAC
-  kubectl apply -f monitoring/dashboard.yaml -n ocr-lab
-  kubectl apply -f monitoring/rbac.yaml -n ocr-lab
+  # Dashboard & RBAC (one time only)
+  kubectl apply -f ocr-lab/monitoring/dashboard.yaml -n ocr-lab
+  kubectl apply -f ocr-lab/monitoring/rbac.yaml -n ocr-lab
 
 
 ================================================================================
@@ -114,10 +113,10 @@ Order matters — RabbitMQ must be running before the OCR engines.
 
 Only needed if images are not present in Docker:
 
-  docker build -t ocr-gateway:latest ./gateway
-  docker build -t ocr-tesseract:latest ./engines/tesseract
-  docker build -t ocr-easyocr:latest ./engines/easyocr
-  docker build -t ocr-paddle:latest ./engines/paddle
+  docker build -t ocr-gateway:latest ./ocr-lab/gateway
+  docker build -t ocr-tesseract:latest ./ocr-lab/engines/tesseract
+  docker build -t ocr-easyocr:latest ./ocr-lab/engines/easyocr
+  docker build -t ocr-paddle:latest ./ocr-lab/engines/paddle
 
 
 ================================================================================
@@ -142,6 +141,8 @@ Access URLs:
   STEP 8 — CI/CD (Jenkins + ngrok)
 ================================================================================
 
+--- JENKINS ---
+
 Jenkins runs as a standalone Docker container (NOT inside Kubernetes):
 
   docker run -d \
@@ -149,19 +150,69 @@ Jenkins runs as a standalone Docker container (NOT inside Kubernetes):
     -p 9090:8080 \
     -p 50000:50000 \
     -v jenkins_home:/var/jenkins_home \
+    -v //var/run/docker.sock:/var/run/docker.sock \
     jenkins/jenkins:lts
 
   Access Jenkins at: http://localhost:9090
 
-Start ngrok tunnel (run every session — URL changes each time on free plan):
+After creating the container, run setup-jenkins.ps1 to configure
+Docker CLI and kubectl access:
 
+  .\setup-jenkins.ps1
+
+Jenkins credentials needed (set up once via UI):
+  Manage Jenkins → Credentials → System → Global credentials → Add Credentials
+  - Kind       : Username with password
+  - Username   : your Docker Hub username
+  - Password   : your Docker Hub access token (generate at hub.docker.com)
+  - ID         : dockerhub-credentials
+
+Jenkins plugins needed (installed via suggested plugins + one manual):
+  - Docker Pipeline (install manually via Manage Jenkins → Plugins)
+  - All others come with suggested plugins during initial setup
+
+Jenkins job setup (one time):
+  New Item → ocr-lab-pipeline → Pipeline → OK
+  Build Triggers  → ✅ GitHub hook trigger for GITScm polling
+  Pipeline        → Pipeline script from SCM
+  SCM             → Git
+  Repository URL  → https://github.com/dalisaid/ocr-kubernetes-dotnet-api-alfresco
+  Branch          → */main
+  Script Path     → Jenkinsfile
+  Save
+
+
+--- NGROK ---
+
+ngrok creates a public tunnel so GitHub can reach your local Jenkins.
+Your Jenkins runs on localhost:9090 which GitHub cannot reach directly.
+ngrok solves this by exposing it via a public URL.
+
+Install ngrok: https://ngrok.com/download
+Authenticate (one time):
+  ngrok config add-authtoken <your-token>
+  (token available at dashboard.ngrok.com)
+
+Start tunnel (run every session):
   ngrok http 9090
 
-Copy the ngrok URL and update the GitHub webhook:
-  GitHub repo → Settings → Webhooks → Payload URL:
-  https://<ngrok-url>/github-webhook/
+You will see output like:
+  Forwarding  https://abc123.ngrok-free.app → http://localhost:9090
 
-Update the webhook URL in GitHub every time ngrok is restarted.
+Copy that public URL and set it as the GitHub webhook:
+  GitHub repo → Settings → Webhooks → Add webhook (or edit existing)
+  Payload URL   → https://abc123.ngrok-free.app/github-webhook/
+  Content type  → application/json
+  Events        → Just the push event
+  Active        → ✅
+
+IMPORTANT: On the free ngrok plan, the URL changes every time ngrok restarts.
+You must update the GitHub webhook URL every time you restart ngrok.
+To verify the webhook is working:
+  GitHub → Settings → Webhooks → Recent Deliveries → should show green checkmarks
+
+ngrok web interface (inspect requests):
+  http://127.0.0.1:4040
 
 
 ================================================================================
@@ -169,7 +220,7 @@ Update the webhook URL in GitHub every time ngrok is restarted.
 ================================================================================
 
 The grafana-values.yaml file must NOT include a Prometheus datasource entry.
-kube-prometheus-stack (if used) or the prometheus chart provisions it automatically.
+The prometheus chart provisions it automatically.
 Having two default datasources causes Grafana to crash on startup.
 
 Only Tempo and Loki should be defined in the datasources section.
@@ -207,6 +258,16 @@ FIX:   Run ngrok http 9090 again, copy the new URL,
 ISSUE: Cluster crashed / pods gone after Docker Desktop restart
 FIX:   The cluster itself survives restarts but pods need to be redeployed.
        Rerun Steps 4 and 5. Images are preserved in Docker so no rebuild needed.
+
+ISSUE: Jenkins pipeline kubectl fails with "Authentication required" HTML response
+FIX:   The kubeconfig is missing or not accessible by the jenkins user.
+       Run setup-jenkins.ps1 to restore it. Key step is copying kubeconfig
+       to /var/jenkins_home/.kube/config (jenkins user home), not /root/.kube/config.
+
+ISSUE: Jenkins pipeline docker command not found (exit code 127)
+FIX:   Docker CLI not installed or socket permissions wrong. Run:
+       docker exec -u root jenkins bash -c "apt-get update && apt-get install -y docker.io"
+       docker exec -u root jenkins chmod 666 /var/run/docker.sock
 
 
 ================================================================================
